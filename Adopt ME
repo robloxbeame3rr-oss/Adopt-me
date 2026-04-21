@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Adopt Me Trade Optimizer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+  margin: 0;
+  font-family: Inter, sans-serif;
+  background: #0f172a;
+  color: white;
+}
+
+.center {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+.card {
+  background: #020617;
+  padding: 20px;
+  border-radius: 12px;
+  width: 300px;
+  text-align: center;
+}
+
+input, button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  border-radius: 8px;
+  border: none;
+}
+
+button {
+  background: #6366f1;
+  color: white;
+  cursor: pointer;
+}
+
+.hidden { display: none; }
+
+.tradeBox {
+  max-width: 400px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" class="center">
+  <div class="card">
+    <h2>Login</h2>
+    <input id="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
+
+    <button onclick="login()">Login</button>
+    <button onclick="register()">Register</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="appScreen" class="center hidden">
+  <div class="card tradeBox">
+    <h2>Trade Calculator</h2>
+
+    <input id="yourValue" placeholder="Your value">
+    <input id="theirValue" placeholder="Their value">
+
+    <button onclick="calculate()">Calculate Trade</button>
+
+    <p id="result"></p>
+
+    <button onclick="logout()">Logout</button>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+
+<script>
+// 🔥 Firebase config
+const firebaseConfig = {
+  apiKey: "YOUR_KEY",
+  authDomain: "YOUR_DOMAIN",
+  projectId: "YOUR_ID"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+
+// 👤 Register
+function register(){
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  auth.createUserWithEmailAndPassword(email, password)
+    .then(user => {
+      return db.collection("users").doc(user.user.uid).set({
+        email,
+        verified: false,
+        role: "user"
+      });
+    });
+}
+
+
+// 🔐 Login
+function login(){
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  auth.signInWithEmailAndPassword(email, password);
+}
+
+
+// 🚪 Logout
+function logout(){
+  auth.signOut();
+}
+
+
+// 🧠 Trade calculator
+function calculate(){
+  const your = Number(document.getElementById("yourValue").value);
+  const theirs = Number(document.getElementById("theirValue").value);
+
+  let result = "";
+
+  if(theirs > your) result = "WIN 🎉";
+  else if(theirs === your) result = "FAIR 🤝";
+  else result = "LOSE ❌";
+
+  document.getElementById("result").innerText = result;
+}
+
+
+// 🔐 Auth state handler (CORE LOGIC)
+auth.onAuthStateChanged(async user => {
+
+  if(!user){
+    showLogin();
+    return;
+  }
+
+  const doc = await db.collection("users").doc(user.uid).get();
+
+  if(!doc.exists){
+    showLogin();
+    return;
+  }
+
+  const data = doc.data();
+
+  // 👑 Admin redirect
+  if(data.role === "admin"){
+    window.location.href = "admin.html";
+    return;
+  }
+
+  // ⏳ Not verified
+  if(!data.verified){
+    window.location.href = "waiting.html";
+    return;
+  }
+
+  // ✅ Verified user
+  showApp();
+});
+
+
+// UI helpers
+function showLogin(){
+  document.getElementById("loginScreen").classList.remove("hidden");
+  document.getElementById("appScreen").classList.add("hidden");
+}
+
+function showApp(){
+  document.getElementById("loginScreen").classList.add("hidden");
+  document.getElementById("appScreen").classList.remove("hidden");
+}
+</script>
+
+</body>
+</html>
